@@ -20,6 +20,16 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+    await client.connect();
+
+    const db = client.db("Habit");
+    const habitCollection = db.collection("habits");
+
+    
+    app.get("/habits", async (req, res) => {
+      const result = await habitCollection.find().toArray();
+      res.send(result);
+    });
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     // Send a ping to confirm a successful connection
