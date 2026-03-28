@@ -25,10 +25,21 @@ async function run() {
     const db = client.db("Habit");
     const habitCollection = db.collection("habits");
 
-    
     app.get("/habits", async (req, res) => {
       const result = await habitCollection.find().toArray();
       res.send(result);
+    });
+
+    app.get("/featured-habits", async (req, res) => {
+      const limit = parseInt(req.query.limit) || 0;
+
+      const habits = await habitCollection
+        .find()
+        .sort({ createdAt: -1 })
+        .limit(6)
+        .toArray();
+
+      res.send(habits);
     });
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
