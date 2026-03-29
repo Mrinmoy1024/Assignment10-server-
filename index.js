@@ -24,11 +24,27 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // await client.connect();
+    await client.connect();
 
     const db = client.db("Habit");
     const habitCollection = db.collection("habits");
     const myHabitCollection = db.collection("my-habits");
+    app.get("/habits/:id", async (req, res) => {
+      const id = req.params.id;
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid habit ID" });
+      }
+      try {
+        const habit = await habitCollection.findOne({ _id: new ObjectId(id) });
+        if (!habit) {
+          return res.status(404).send({ message: "Habit not found" });
+        }
+        res.send(habit);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Server error" });
+      }
+    });
     app.get("/habits", async (req, res) => {
       const result = await habitCollection.find().toArray();
       res.send(result);
@@ -60,6 +76,27 @@ async function run() {
         res.send(result);
       }
     });
+    app.get("/habits/:id", async (req, res) => {
+      const id = req.params.id;
+      try {
+        // Try ObjectId first, fall back to string
+        let habit = null;
+        if (ObjectId.isValid(id)) {
+          habit = await habitCollection.findOne({ _id: new ObjectId(id) });
+        }
+        if (!habit) {
+          habit = await habitCollection.findOne({ _id: id });
+        }
+        if (!habit) {
+          return res.status(404).send({ message: "Habit not found" });
+        }
+        res.send(habit);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Server error" });
+      }
+    });
+
     app.post("/my-habits", async (req, res) => {
       const myHabit = req.body;
 
@@ -74,7 +111,7 @@ async function run() {
 
       res.send(result);
     });
-    // Delete a habit by ID
+
     app.delete("/my-habits/:id", async (req, res) => {
       const id = req.params.id;
 
@@ -97,10 +134,41 @@ async function run() {
         res.status(500).send({ deletedCount: 0, message: "Server error" });
       }
     });
+    app.put("/habits/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedHabit = req.body;
+      try {
+        let result = null;
+
+        if (ObjectId.isValid(id)) {
+          result = await habitCollection.updateOne(
+            { _id: new ObjectId(id) },
+            { $set: updatedHabit },
+          );
+        }
+
+        
+        if (!result || result.matchedCount === 0) {
+          result = await habitCollection.updateOne(
+            { _id: id },
+            { $set: updatedHabit },
+          );
+        }
+
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: "Habit not found" });
+        }
+
+        res.send(result);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Server error" });
+      }
+    });
     // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
+    await client.connect();
     // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
+    await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
