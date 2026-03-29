@@ -3,7 +3,11 @@ const app = express();
 const port = 3000;
 require("dotenv").config();
 const cors = require("cors");
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+  }),
+);
 app.use(express.json());
 
 const { MongoClient, ServerApiVersion } = require("mongodb");
@@ -20,7 +24,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
 
     const db = client.db("Habit");
     const habitCollection = db.collection("habits");
@@ -41,10 +45,39 @@ async function run() {
 
       res.send(habits);
     });
+
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const { email, displayName, photoURL } = user;
+      const query = { email: email };
+      const usersCollection = db.collection("users");
+      const existingUser = await usersCollection.findOne({ email: user.email });
+
+      if (existingUser) {
+        return res.send({ message: "User already exists" });
+      } else {
+        const result = await usersCollection.insertOne(user);
+        res.send(result);
+      }
+    });
+    app.post("/my-habits", async (req, res) => {
+      const myHabit = req.body;
+
+      const result = await habitCollection.insertOne(myHabit);
+      res.send(result);
+    });
+    app.get("/my-habits", async (req, res) => {
+      const email = req.query.email;
+
+      const query = email ? { userEmail: email } : {};
+      const result = await habitCollection.find(query).toArray();
+
+      res.send(result);
+    });
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
